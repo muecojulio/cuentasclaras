@@ -1,6 +1,7 @@
-import * as XLSX from "xlsx";
+import * as XLSX from "@e965/xlsx";
 import type { Expense, PersonDue } from "./ledger-store.ts";
-import { formatLongDay, formatMxn, formatShortDay, formatStamp, periodLabel, sumExpenses, sumPeople } from "./money.ts";
+import { getExpenseCategory } from "./expense-categories.ts";
+import { formatMxn, formatShortDay, formatStamp, periodLabel, sumExpenses, sumPeople } from "./money.ts";
 
 export interface ReportData {
   title?: string;
@@ -102,19 +103,20 @@ export function buildMonthlyExcelWorkbook(data: ReportData): Uint8Array {
     ["Período:", period],
     ["Moneda:", "Pesos Mexicanos (MXN)"],
     [],
-    ["#", "Fecha", "Descripción del Gasto", "Método de Pago", "Monto ($ MXN)"],
+    ["#", "Fecha", "Descripción del Gasto", "Categoría", "Método de Pago", "Monto ($ MXN)"],
   ];
 
   const sortedExpenses = [...data.expenses].sort((a, b) => a.date.localeCompare(b.date));
 
   if (sortedExpenses.length === 0) {
-    expenseRows.push([1, "-", "Sin gastos registrados", "-", 0]);
+    expenseRows.push([1, "-", "Sin gastos registrados", "-", "-", 0]);
   } else {
     sortedExpenses.forEach((exp, idx) => {
       expenseRows.push([
         idx + 1,
         exp.date,
         exp.description,
+        getExpenseCategory(exp.category).label,
         exp.method === "efectivo" ? "Efectivo" : "Tarjeta",
         exp.amountCents / 100,
       ]);
@@ -126,6 +128,7 @@ export function buildMonthlyExcelWorkbook(data: ReportData): Uint8Array {
     "",
     "",
     "TOTAL DE GASTOS",
+    "",
     `Efectivo: ${formatMxn(expenseTotals.cash)} | Tarjeta: ${formatMxn(expenseTotals.card)}`,
     expenseTotals.all / 100,
   ]);
@@ -135,6 +138,7 @@ export function buildMonthlyExcelWorkbook(data: ReportData): Uint8Array {
     { wch: 6 },
     { wch: 14 },
     { wch: 36 },
+    { wch: 18 },
     { wch: 18 },
     { wch: 20 },
   ];
@@ -221,7 +225,7 @@ export function buildSingleMemberExcelWorkbook(
     ["SALDO PENDIENTE PARA SIGUIENTE MES", pending],
     [],
     ["--- GASTOS REGISTRADOS DEL GRUPO ---", "", "", ""],
-    ["Fecha", "Descripción", "Método", "Monto ($ MXN)"],
+    ["Fecha", "Descripción", "Categoría", "Método", "Monto ($ MXN)"],
   ];
 
   const sorted = [...allExpenses].sort((a, b) => a.date.localeCompare(b.date));
@@ -229,16 +233,29 @@ export function buildSingleMemberExcelWorkbook(
     rows.push([
       exp.date,
       exp.description,
+      getExpenseCategory(exp.category).label,
       exp.method === "efectivo" ? "Efectivo" : "Tarjeta",
       exp.amountCents / 100,
     ]);
   });
 
   rows.push([]);
-  rows.push(["TOTAL GRUPO", `${allExpenses.length} gastos`, `Repartido entre ${allPeople.length} personas`, expenseTotals.all / 100]);
+  rows.push([
+    "",
+    "TOTAL GRUPO",
+    "",
+    `Repartido entre ${allPeople.length} personas`,
+    expenseTotals.all / 100,
+  ]);
 
   const ws = XLSX.utils.aoa_to_sheet(rows);
-  ws["!cols"] = [{ wch: 22 }, { wch: 34 }, { wch: 26 }, { wch: 20 }];
+  ws["!cols"] = [
+    { wch: 14 },
+    { wch: 34 },
+    { wch: 18 },
+    { wch: 18 },
+    { wch: 20 },
+  ];
   XLSX.utils.book_append_sheet(wb, ws, "Corte Individual");
 
   const arrayBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });

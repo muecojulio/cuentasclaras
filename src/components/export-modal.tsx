@@ -1,6 +1,6 @@
 import { useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { Download, FileSpreadsheet, MessageCircle, Send, Share2, X, Check, Copy, AlertCircle } from "lucide-react";
+import { Download, FileSpreadsheet, Send, X, Check, Copy, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Button, Money } from "@/components/ui";
 import type { Expense, PersonDue } from "@/lib/ledger-store";
@@ -162,11 +162,13 @@ export function ExportModal({
             </div>
 
             <Button
-              className="w-full flex items-center justify-center gap-2"
+              className="w-full"
               onClick={handleDownloadGeneral}
-              disabled={isExportingGeneral || expenses.length === 0}
+              disabled={expenses.length === 0}
+              loading={isExportingGeneral}
+              loadingLabel="Generando Excel…"
             >
-              <Download className="size-4" />
+              <Download aria-hidden="true" className="size-4" />
               Descargar Excel General (.xlsx)
             </Button>
           </div>
@@ -243,7 +245,7 @@ export function ExportModal({
                       <div className="grid grid-cols-3 gap-2 pt-1 border-t border-line/60">
                         <button
                           type="button"
-                          className="flex items-center justify-center gap-1.5 h-9 rounded-xl border border-line bg-paper text-xs font-medium text-ink hover:bg-forest/10 hover:text-forest transition-colors"
+                          className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-line bg-paper px-2 text-xs font-semibold text-ink hover:bg-forest/10 hover:text-forest"
                           onClick={() => handleDownloadSinglePerson(person)}
                           title={`Descargar Excel para ${person.name}`}
                         >
@@ -253,18 +255,19 @@ export function ExportModal({
 
                         <button
                           type="button"
-                          className="flex items-center justify-center gap-1.5 h-9 rounded-xl bg-forest text-paper text-xs font-medium hover:opacity-90 transition-opacity"
+                          className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-forest px-2 text-xs font-semibold text-paper hover:opacity-90 disabled:opacity-50"
                           onClick={() => void handleSharePerson(person)}
                           disabled={sharingPersonId === person.id}
+                          aria-busy={sharingPersonId === person.id}
                           title={`Enviar reporte a ${person.name}`}
                         >
-                          <Send className="size-3.5" />
-                          <span>Mandar</span>
+                          <Send aria-hidden="true" className="size-4" />
+                          <span>{sharingPersonId === person.id ? "Enviando…" : "Mandar"}</span>
                         </button>
 
                         <button
                           type="button"
-                          className="flex items-center justify-center gap-1.5 h-9 rounded-xl border border-line bg-paper text-xs font-medium text-muted hover:text-ink transition-colors"
+                          className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-line bg-paper px-2 text-xs font-semibold text-muted hover:text-ink"
                           onClick={() => handleCopyText(person)}
                           title={`Copiar texto para ${person.name}`}
                         >

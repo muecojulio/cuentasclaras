@@ -24,6 +24,8 @@ export function todayInMexico(now = new Date()): string {
 
 export function cleanText(value: string, max: number): string {
   return value
+    // Strip control characters from user text before display/export.
+    // eslint-disable-next-line no-control-regex
     .replace(/[\u0000-\u001F\u007F]/g, " ")
     .replace(/\s+/g, " ")
     .trim()

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { Archive, ChevronRight, FileSpreadsheet, Plus, Sparkles } from "lucide-react";
+import { Archive, ChevronRight, FileSpreadsheet, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Money } from "@/components/ui";
 import { ExportModal } from "@/components/export-modal";
@@ -39,8 +39,9 @@ function ArchivoReady() {
   }
 
   return (
-    <div className="page-pad px-4 pt-5 pb-24 space-y-4">
-      <div className="rounded-3xl bg-forest p-5 text-paper shadow-md">
+    <div className="page-pad mx-auto max-w-6xl space-y-5 px-4 pb-28 pt-5">
+      <div className="relative isolate overflow-hidden rounded-[2rem] bg-gradient-to-br from-forest via-forest to-[#084d44] p-5 text-paper shadow-xl">
+        <span aria-hidden="true" className="pointer-events-none absolute -right-8 -top-14 -z-10 size-48 rounded-full bg-citrus/30 blur-2xl" />
         <div className="flex items-center gap-2.5">
           <span className="grid size-9 place-items-center rounded-xl bg-paper/20">
             <Archive className="size-5 text-paper" />
@@ -69,14 +70,14 @@ function ArchivoReady() {
           </div>
           <Link
             to="/"
-            className="inline-flex h-10 items-center justify-center gap-1.5 px-4 rounded-2xl bg-forest text-paper text-xs font-medium"
+            className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-2xl bg-forest px-4 text-xs font-semibold text-paper"
           >
             <Plus className="size-4" />
             <span>Ir a Gastos</span>
           </Link>
         </div>
       ) : (
-        <ul className="space-y-3">
+        <ul className="grid gap-3 md:grid-cols-2">
           {archive.map((item) => {
             const totals = sumExpenses(item.expenses);
             const people = sumPeople(item.people);
@@ -130,7 +131,7 @@ function ArchivoReady() {
                 <div className="pt-2 border-t border-line/60 flex items-center justify-end gap-2">
                   <button
                     type="button"
-                    className="inline-flex items-center gap-1.5 h-8 px-3 rounded-xl border border-line bg-paper text-xs font-medium text-ink hover:bg-forest/10 hover:text-forest transition-colors"
+                    className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-line bg-paper px-3 text-xs font-semibold text-ink hover:bg-forest/10 hover:text-forest"
                     onClick={(e) => handleQuickExport(e, item)}
                   >
                     <FileSpreadsheet className="size-3.5 text-forest" />
@@ -139,7 +140,7 @@ function ArchivoReady() {
 
                   <button
                     type="button"
-                    className="inline-flex items-center gap-1.5 h-8 px-3 rounded-xl bg-forest text-paper text-xs font-medium hover:opacity-90 transition-opacity"
+                    className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-forest px-3 text-xs font-semibold text-paper hover:opacity-90"
                     onClick={() => setSelectedForExport(item)}
                   >
                     <span>Mandar a integrantes</span>

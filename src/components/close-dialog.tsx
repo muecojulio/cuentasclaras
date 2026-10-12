@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
-import { Download, FileSpreadsheet, RotateCcw } from "lucide-react";
-import { formatLongDay, formatMxn, periodLabel, sumExpenses } from "@/lib/money";
+import { Download } from "lucide-react";
+import { formatLongDay, periodLabel, sumExpenses } from "@/lib/money";
 import type { Expense, PersonDue } from "@/lib/ledger-store";
 import { Money, Toggle } from "@/components/ui";
 import { buildMonthlyExcelWorkbook, downloadExcelFile } from "@/lib/excel-export";

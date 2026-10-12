@@ -2,6 +2,11 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { useEffect, useState } from "react";
 import { cleanText, MAX_CENTS } from "./money.ts";
+import {
+  DEFAULT_EXPENSE_CATEGORY,
+  isExpenseCategory,
+  type ExpenseCategory,
+} from "./expense-categories.ts";
 
 export type PayMethod = "efectivo" | "tarjeta";
 
@@ -10,6 +15,7 @@ export type Expense = {
   date: string;
   description: string;
   method: PayMethod;
+  category: ExpenseCategory;
   amountCents: number;
   createdAt: string;
 };
@@ -42,6 +48,7 @@ type ExpenseInput = {
   description: string;
   method: PayMethod;
   amountCents: number;
+  category?: ExpenseCategory;
 };
 
 type PersonInput = {
@@ -109,13 +116,52 @@ function expenseFrom(input: ExpenseInput, id: string, createdAt: string): Expens
   const description = cleanText(input.description, 140);
   if (!description || !validDate(input.date) || !validCents(input.amountCents)) return null;
   if (input.method !== "efectivo" && input.method !== "tarjeta") return null;
+  const category = input.category === undefined ? DEFAULT_EXPENSE_CATEGORY : input.category;
+  if (!isExpenseCategory(category)) return null;
   return {
     id,
     date: input.date,
     description,
     method: input.method,
+    category,
     amountCents: input.amountCents,
     createdAt,
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function addDefaultCategory(expense: unknown): unknown {
+  if (!isRecord(expense)) return expense;
+  return {
+    ...expense,
+    category: isExpenseCategory(expense.category) ? expense.category : DEFAULT_EXPENSE_CATEGORY,
+  };
+}
+
+/** Upgrade the existing local v1 ledger without discarding saved expenses. */
+export function migrateLedgerState(persistedState: unknown, _version: number): unknown {
+  if (!isRecord(persistedState)) return { open: EMPTY_OPEN, archive: [] };
+  const storedOpen = isRecord(persistedState.open) ? persistedState.open : EMPTY_OPEN;
+  const archive = Array.isArray(persistedState.archive)
+    ? persistedState.archive.filter(isRecord).map((entry) => ({
+        ...entry,
+        expenses: Array.isArray(entry.expenses) ? entry.expenses.map(addDefaultCategory) : [],
+      }))
+    : [];
+
+  return {
+    ...persistedState,
+    open: {
+      ...storedOpen,
+      expenses: Array.isArray(storedOpen.expenses)
+        ? storedOpen.expenses.map(addDefaultCategory)
+        : [],
+      people: Array.isArray(storedOpen.people) ? storedOpen.people : [],
+    },
+    archive,
   };
 }
 
@@ -298,6 +344,8 @@ export const useLedger = create<LedgerState>()(
         typeof window === "undefined" ? memoryStorage : window.localStorage,
       ),
       partialize: (state) => ({ open: state.open, archive: state.archive }),
+      version: 2,
+      migrate: migrateLedgerState,
       skipHydration: true,
     },
   ),

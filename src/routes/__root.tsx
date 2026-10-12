@@ -13,7 +13,7 @@ export const Route = createRootRoute({
       {
         name: "description",
         content:
-          "Anota gastos en efectivo o tarjeta, asigna lo que debe cada persona y cierra la lista del día.",
+          "Registra y clasifica gastos, reparte saldos y guarda cortes diarios en pesos mexicanos, sin cuenta y con tus datos en el dispositivo.",
       },
       { name: "theme-color", content: "#f3efe6" },
     ],
