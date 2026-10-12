@@ -1,10 +1,30 @@
 import { useState, type FormEvent } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Pencil, Trash2 } from "lucide-react";
+import {
+  FileSpreadsheet,
+  Pencil,
+  Plus,
+  Send,
+  Trash2,
+  Users,
+  CheckCircle2,
+  Divide,
+  AlertCircle,
+  Copy,
+  Check,
+  Calendar,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button, Field, inputClass, Money, Toggle } from "@/components/ui";
+import { ExportModal } from "@/components/export-modal";
 import { useLedger, type PersonDue } from "@/lib/ledger-store";
-import { dueLabel, parseAmountToCents, sumExpenses, sumPeople, todayInMexico } from "@/lib/money";
+import { dueLabel, formatMxn, formatShortDay, parseAmountToCents, sumExpenses, sumPeople, todayInMexico } from "@/lib/money";
+import {
+  buildMemberWhatsAppText,
+  buildSingleMemberExcelWorkbook,
+  downloadExcelFile,
+  shareMemberReport,
+} from "@/lib/excel-export";
 import { cn } from "@/lib/cn";
 
 export const Route = createFileRoute("/_app/personas")({
@@ -21,6 +41,7 @@ function PersonasReady() {
   const addPerson = useLedger((state) => state.addPerson);
   const updatePerson = useLedger((state) => state.updatePerson);
   const setPersonSettled = useLedger((state) => state.setPersonSettled);
+  const setAllPeopleSettled = useLedger((state) => state.setAllPeopleSettled);
   const removePerson = useLedger((state) => state.removePerson);
   const splitEvenly = useLedger((state) => state.splitEvenly);
 
@@ -29,6 +50,9 @@ function PersonasReady() {
   const [dueDate, setDueDate] = useState(todayInMexico);
   const [editing, setEditing] = useState<PersonDue | null>(null);
   const [error, setError] = useState("");
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [sharingId, setSharingId] = useState<string | null>(null);
 
   const spent = sumExpenses(expenses).all;
   const assigned = sumPeople(people);
@@ -45,11 +69,11 @@ function PersonasReady() {
     event.preventDefault();
     const cents = parseAmountToCents(amount);
     if (!name.trim()) {
-      setError("Escribe el nombre.");
+      setError("Escribe el nombre de la persona.");
       return;
     }
     if (cents === null) {
-      setError("Escribe cuánto le toca, mayor a cero.");
+      setError("Escribe cuánto le toca pagar, mayor a $0.00.");
       return;
     }
     if (!dueDate) {
@@ -59,69 +83,165 @@ function PersonasReady() {
     const input = { name, amountCents: cents, dueDate };
     const ok = editing ? updatePerson(editing.id, input) : addPerson(input);
     if (!ok) {
-      setError("No se pudo guardar.");
+      setError("No se pudo guardar la persona. Revisa los datos.");
       return;
     }
-    toast.success(editing ? "Persona actualizada" : "Persona agregada");
+    toast.success(editing ? "Persona actualizada" : "Persona agregada a la lista");
     reset();
   }
 
+  function handleSinglePersonExcel(person: PersonDue) {
+    try {
+      const bytes = buildSingleMemberExcelWorkbook(person, expenses, people);
+      const safeName = person.name.toLowerCase().replace(/[^a-z0-9]/gi, "_");
+      downloadExcelFile(bytes, `Cuentas_Claras_${safeName}.xlsx`);
+      toast.success(`Excel de ${person.name} descargado`);
+    } catch {
+      toast.error("Error al exportar");
+    }
+  }
+
+  async function handleSharePerson(person: PersonDue) {
+    setSharingId(person.id);
+    try {
+      const res = await shareMemberReport(person, expenses, people);
+      if (res.success) {
+        if (res.method === "share-file") toast.success(`Excel y corte compartidos con ${person.name}`);
+        else if (res.method === "share-text") toast.success(`Corte compartido con ${person.name}`);
+        else if (res.method === "whatsapp") toast.success(`Abriendo WhatsApp para ${person.name}`);
+      }
+    } catch {
+      toast.error("No se pudo compartir");
+    } finally {
+      setSharingId(null);
+    }
+  }
+
+  function handleCopyText(person: PersonDue) {
+    const text = buildMemberWhatsAppText(person, expenses, people.length);
+    void navigator.clipboard?.writeText(text).then(
+      () => {
+        setCopiedId(person.id);
+        toast.success(`Mensaje para ${person.name} copiado`);
+        setTimeout(() => setCopiedId(null), 2500);
+      },
+      () => toast.error("No se pudo copiar el texto"),
+    );
+  }
+
   return (
-    <div className="page-pad px-4 pt-5">
-      <section className="rounded-3xl border border-line bg-surface px-4 py-4">
-        <p className="text-sm text-muted">Gastos de la lista</p>
-        <p className="font-display text-3xl font-medium tracking-tight">
-          <Money cents={spent} />
-        </p>
-        <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+    <div className="page-pad px-4 pt-5 pb-24 space-y-4">
+      {/* Resumen de Reparto y Pendientes para el Siguiente Mes */}
+      <section className="rounded-3xl border border-line bg-surface p-5 shadow-xs space-y-4">
+        <div className="flex items-start justify-between">
           <div>
-            <p className="text-muted">Asignado</p>
-            <Money cents={assigned.assigned} className="font-medium" />
+            <p className="text-xs uppercase tracking-wider text-muted font-medium">Total de Gastos a Repartir</p>
+            <p className="font-display text-3xl font-medium tracking-tight text-ink mt-0.5">
+              <Money cents={spent} />
+            </p>
           </div>
-          <div>
-            <p className="text-muted">Por cobrar</p>
-            <Money cents={assigned.pending} className="font-medium" />
+          <span className="rounded-full bg-forest/15 px-3 py-1 text-xs font-semibold text-forest">
+            {people.length} {people.length === 1 ? "integrante" : "integrantes"}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2 pt-2 border-t border-line text-xs">
+          <div className="rounded-2xl bg-paper p-2.5">
+            <p className="text-muted text-[11px]">Asignado</p>
+            <p className="font-medium text-sm text-ink mt-0.5">
+              <Money cents={assigned.assigned} />
+            </p>
+          </div>
+          <div className="rounded-2xl bg-paper p-2.5">
+            <p className="text-muted text-[11px]">Ya Pagado</p>
+            <p className="font-medium text-sm text-forest mt-0.5">
+              <Money cents={assigned.settled} />
+            </p>
+          </div>
+          <div className="rounded-2xl bg-paper p-2.5">
+            <p className="text-muted text-[11px]">Pendiente Sig. Mes</p>
+            <p className="font-medium text-sm text-danger mt-0.5">
+              <Money cents={assigned.pending} />
+            </p>
           </div>
         </div>
-        <p className="mt-3 text-sm text-muted">
-          {people.length === 0
-            ? "Agrega una o más personas y ponle a cada una su monto y su fecha de pago."
-            : gap === 0
-              ? "El reparto cubre exactamente el total de gastos."
-              : gap > 0
-                ? `Faltan ${new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(gap / 100)} por asignar.`
-                : "El reparto supera el total de gastos."}
-        </p>
-        <Button
-          variant="surface"
-          className="mt-3 w-full"
-          disabled={people.length === 0 || spent <= 0}
-          onClick={() => {
-            if (splitEvenly()) toast.success("Monto repartido en partes iguales");
-            else toast.error("Necesitas gastos y personas para repartir.");
-          }}
-        >
-          Repartir el total en partes iguales
-        </Button>
+
+        {/* Indicador de Balance */}
+        <div className="rounded-2xl bg-paper/80 p-3 text-xs text-muted">
+          {people.length === 0 ? (
+            <p>Agrega una o más personas para definir cuánto le toca pagar a cada una y su fecha compromiso.</p>
+          ) : gap === 0 ? (
+            <p className="text-forest font-medium flex items-center gap-1.5">
+              <CheckCircle2 className="size-4" />
+              <span>El reparto cubre exactamente el 100% de los gastos ($ MXN).</span>
+            </p>
+          ) : gap > 0 ? (
+            <p className="text-amber-700 dark:text-amber-400 font-medium flex items-center gap-1.5">
+              <AlertCircle className="size-4 shrink-0" />
+              <span>Faltan {formatMxn(gap)} MXN por asignar entre los integrantes.</span>
+            </p>
+          ) : (
+            <p className="text-danger font-medium flex items-center gap-1.5">
+              <AlertCircle className="size-4 shrink-0" />
+              <span>El monto asignado supera el total de gastos por {formatMxn(Math.abs(gap))} MXN.</span>
+            </p>
+          )}
+        </div>
+
+        {/* Botones de acción de reparto */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <Button
+            variant="surface"
+            className="flex items-center justify-center gap-1.5 text-xs h-10"
+            disabled={people.length === 0 || spent <= 0}
+            onClick={() => {
+              if (splitEvenly()) toast.success("Total repartido en partes iguales");
+              else toast.error("Necesitas gastos y personas registradas.");
+            }}
+          >
+            <Divide className="size-3.5" />
+            <span>Repartir en partes iguales</span>
+          </Button>
+
+          <Button
+            className="flex items-center justify-center gap-1.5 text-xs h-10 bg-forest text-paper"
+            onClick={() => setExportModalOpen(true)}
+            disabled={people.length === 0 && expenses.length === 0}
+          >
+            <FileSpreadsheet className="size-3.5" />
+            <span>Mandar corte mensual en Excel</span>
+          </Button>
+        </div>
       </section>
 
-      <form onSubmit={onSubmit} className="mt-4 space-y-3 rounded-3xl border border-line bg-surface p-4">
+      {/* Formulario para agregar o editar persona */}
+      <form onSubmit={onSubmit} className="space-y-3 rounded-3xl border border-line bg-surface p-4 shadow-xs">
         <div className="flex items-baseline justify-between">
-          <h2 className="font-display text-2xl font-medium tracking-tight">
-            {editing ? "Editar persona" : "Agregar persona"}
-          </h2>
+          <div className="flex items-center gap-2">
+            <span className="grid size-7 place-items-center rounded-lg bg-forest/10 text-forest">
+              {editing ? <Pencil className="size-4" /> : <Plus className="size-4" />}
+            </span>
+            <h2 className="font-display text-xl font-medium tracking-tight text-ink">
+              {editing ? "Editar persona" : "Agregar persona / integrante"}
+            </h2>
+          </div>
           {editing ? (
-            <button type="button" className="text-sm text-muted" onClick={reset}>
+            <button
+              type="button"
+              className="text-xs text-muted hover:text-ink font-medium px-2 py-1 rounded-lg bg-paper"
+              onClick={reset}
+            >
               Cancelar
             </button>
           ) : null}
         </div>
-        <Field label="Nombre" hint={error || undefined}>
+
+        <Field label="Nombre del integrante" hint={error || undefined}>
           <input
             className={inputClass}
             value={name}
             maxLength={60}
-            placeholder="Nombre"
+            placeholder="Ej: Carlos, Ana, Mamá, Juan Pérez…"
             onChange={(event) => {
               setName(event.target.value);
               if (error) setError("");
@@ -129,97 +249,203 @@ function PersonasReady() {
             required
           />
         </Field>
-        <Field label="Cuánto paga">
-          <input
-            className={inputClass}
-            inputMode="decimal"
-            value={amount}
-            placeholder="0.00"
-            onChange={(event) => setAmount(event.target.value)}
-            required
-          />
-        </Field>
-        <Field label="Fecha en que tiene que pagar">
-          <input
-            className={inputClass}
-            type="date"
-            value={dueDate}
-            onChange={(event) => setDueDate(event.target.value)}
-            required
-          />
-        </Field>
-        <Button type="submit" className="w-full">
-          {editing ? "Guardar cambios" : "Agregar persona"}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Field label="Cuánto le toca pagar ($ MXN)">
+            <input
+              className={inputClass}
+              inputMode="decimal"
+              value={amount}
+              placeholder="0.00"
+              onChange={(event) => {
+                setAmount(event.target.value);
+                if (error) setError("");
+              }}
+              required
+            />
+          </Field>
+
+          <Field label="Fecha en que tiene que pagar">
+            <input
+              className={inputClass}
+              type="date"
+              value={dueDate}
+              onChange={(event) => setDueDate(event.target.value)}
+              required
+            />
+          </Field>
+        </div>
+
+        <Button type="submit" className="w-full mt-2">
+          {editing ? "Guardar cambios de la persona" : "Agregar persona"}
         </Button>
       </form>
 
+      {/* Lista de Personas Registradas */}
       {people.length === 0 ? (
-        <p className="mt-8 text-sm text-muted">Nadie está en esta lista todavía.</p>
+        <div className="rounded-3xl border border-dashed border-line bg-paper/50 p-6 text-center">
+          <Users className="size-8 text-muted mx-auto mb-2" />
+          <p className="font-display text-lg font-medium text-ink">No hay personas registradas</p>
+          <p className="mt-1 text-xs text-muted max-w-xs mx-auto">
+            Puedes agregar una o varias personas, asignarles montos individuales o automáticos y fecha de pago.
+          </p>
+        </div>
       ) : (
-        <ul className="mt-5 space-y-2">
-          {people.map((person) => {
-            const due = dueLabel(person.dueDate, person.settled);
-            return (
-              <li key={person.id} className="rise rounded-2xl border border-line bg-surface px-3 py-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate font-medium">{person.name}</p>
-                    <p
-                      className={cn(
-                        "text-sm",
-                        due.tone === "late" && "text-danger",
-                        due.tone === "soon" && "text-forest",
-                        (due.tone === "ok" || due.tone === "paid") && "text-muted",
+        <div className="space-y-3">
+          <div className="flex items-center justify-between px-1">
+            <h3 className="font-display text-lg font-medium text-ink">Integrantes ({people.length})</h3>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className="text-[11px] text-forest hover:underline font-medium"
+                onClick={() => {
+                  setAllPeopleSettled(true);
+                  toast.success("Todos marcados como pagados");
+                }}
+              >
+                Todos pagaron
+              </button>
+              <span className="text-muted">·</span>
+              <button
+                type="button"
+                className="text-[11px] text-muted hover:text-ink font-medium"
+                onClick={() => {
+                  setAllPeopleSettled(false);
+                  toast.message("Todos marcados como pendientes");
+                }}
+              >
+                Todos pendientes
+              </button>
+            </div>
+          </div>
+
+          <ul className="space-y-3">
+            {people.map((person) => {
+              const due = dueLabel(person.dueDate, person.settled);
+              const pendingAmount = person.settled ? 0 : person.amountCents;
+
+              return (
+                <li
+                  key={person.id}
+                  className="rounded-2xl border border-line bg-surface p-4 shadow-xs space-y-3"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-ink text-base truncate">{person.name}</p>
+                        <span
+                          className={cn(
+                            "text-[10px] px-2 py-0.5 rounded-full font-semibold",
+                            person.settled
+                              ? "bg-forest/15 text-forest"
+                              : "bg-danger/15 text-danger",
+                          )}
+                        >
+                          {person.settled ? "PAGADO" : "PENDIENTE"}
+                        </span>
+                      </div>
+
+                      <p
+                        className={cn(
+                          "text-xs mt-0.5 flex items-center gap-1",
+                          due.tone === "late" && "text-danger font-medium",
+                          due.tone === "soon" && "text-amber-600 dark:text-amber-400 font-medium",
+                          (due.tone === "ok" || due.tone === "paid") && "text-muted",
+                        )}
+                      >
+                        <Calendar className="size-3" />
+                        <span>Paga el {formatShortDay(person.dueDate)} ({due.text})</span>
+                      </p>
+
+                      {!person.settled && (
+                        <p className="text-xs text-danger font-medium mt-1">
+                          Saldo pendiente para sig. mes: {formatMxn(pendingAmount)} MXN
+                        </p>
                       )}
-                    >
-                      {due.text}
-                    </p>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <p className="text-xs text-muted">Monto</p>
+                      <Money cents={person.amountCents} className="font-display text-lg font-medium text-ink" />
+                    </div>
                   </div>
-                  <Money cents={person.amountCents} className="font-medium" />
-                </div>
-                <div className="mt-3 flex items-center justify-between">
-                  <label className="flex items-center gap-3 text-sm">
-                    <Toggle
-                      checked={person.settled}
-                      label={`${person.name} ya pagó`}
-                      onCheckedChange={(next) => setPersonSettled(person.id, next)}
-                    />
-                    Ya pagó
-                  </label>
-                  <div className="flex">
-                    <button
-                      type="button"
-                      aria-label={`Editar ${person.name}`}
-                      className="grid size-11 place-items-center rounded-xl text-muted motion-safe:active:scale-[0.96]"
-                      onClick={() => {
-                        setEditing(person);
-                        setName(person.name);
-                        setAmount((person.amountCents / 100).toFixed(2));
-                        setDueDate(person.dueDate);
-                        window.scrollTo({ top: 0, behavior: "smooth" });
-                      }}
-                    >
-                      <Pencil className="size-4" />
-                    </button>
-                    <button
-                      type="button"
-                      aria-label={`Quitar ${person.name}`}
-                      className="grid size-11 place-items-center rounded-xl text-muted motion-safe:active:scale-[0.96]"
-                      onClick={() => {
-                        removePerson(person.id);
-                        if (editing?.id === person.id) reset();
-                        toast.success("Persona quitada");
-                      }}
-                    >
-                      <Trash2 className="size-4" />
-                    </button>
+
+                  {/* Toggle Pagado y Acciones de Envío / Excel */}
+                  <div className="pt-2 border-t border-line/60 flex flex-wrap items-center justify-between gap-2">
+                    <label className="flex items-center gap-2.5 text-xs text-ink cursor-pointer font-medium">
+                      <Toggle
+                        checked={person.settled}
+                        label={`${person.name} ya pagó`}
+                        onCheckedChange={(next) => setPersonSettled(person.id, next)}
+                      />
+                      <span>{person.settled ? "Marcado como pagado" : "¿Ya pagó?"}</span>
+                    </label>
+
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1 h-8 px-2 rounded-xl border border-line bg-paper text-xs font-medium text-ink hover:bg-forest/10 hover:text-forest transition-colors"
+                        onClick={() => handleSinglePersonExcel(person)}
+                        title={`Descargar Excel de ${person.name}`}
+                      >
+                        <FileSpreadsheet className="size-3.5" />
+                        <span>Excel</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1 h-8 px-2.5 rounded-xl bg-forest text-paper text-xs font-medium hover:opacity-90 transition-opacity"
+                        onClick={() => void handleSharePerson(person)}
+                        disabled={sharingId === person.id}
+                        title={`Enviar corte a ${person.name}`}
+                      >
+                        <Send className="size-3" />
+                        <span>Mandar</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        aria-label={`Editar ${person.name}`}
+                        className="grid size-8 place-items-center rounded-xl text-muted hover:bg-paper hover:text-ink transition-colors"
+                        onClick={() => {
+                          setEditing(person);
+                          setName(person.name);
+                          setAmount((person.amountCents / 100).toFixed(2));
+                          setDueDate(person.dueDate);
+                          window.scrollTo({ top: 0, behavior: "smooth" });
+                        }}
+                      >
+                        <Pencil className="size-3.5" />
+                      </button>
+
+                      <button
+                        type="button"
+                        aria-label={`Quitar ${person.name}`}
+                        className="grid size-8 place-items-center rounded-xl text-muted hover:bg-danger/10 hover:text-danger transition-colors"
+                        onClick={() => {
+                          removePerson(person.id);
+                          if (editing?.id === person.id) reset();
+                          toast.success("Persona quitada");
+                        }}
+                      >
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       )}
+
+      {/* Modal de Corte de Mes y Envío en Excel */}
+      <ExportModal
+        open={exportModalOpen}
+        onOpenChange={setExportModalOpen}
+        expenses={expenses}
+        people={people}
+      />
     </div>
   );
 }
