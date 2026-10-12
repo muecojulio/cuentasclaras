@@ -10,8 +10,6 @@ import {
   CheckCircle2,
   Divide,
   AlertCircle,
-  Copy,
-  Check,
   Calendar,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -20,7 +18,6 @@ import { ExportModal } from "@/components/export-modal";
 import { useLedger, type PersonDue } from "@/lib/ledger-store";
 import { dueLabel, formatMxn, formatShortDay, parseAmountToCents, sumExpenses, sumPeople, todayInMexico } from "@/lib/money";
 import {
-  buildMemberWhatsAppText,
   buildSingleMemberExcelWorkbook,
   downloadExcelFile,
   shareMemberReport,
@@ -50,8 +47,9 @@ function PersonasReady() {
   const [dueDate, setDueDate] = useState(todayInMexico);
   const [editing, setEditing] = useState<PersonDue | null>(null);
   const [error, setError] = useState("");
+  const [errorField, setErrorField] = useState<"name" | "amount" | "dueDate" | null>(null);
+  const [submitStatus, setSubmitStatus] = useState<"success" | "error" | undefined>();
   const [exportModalOpen, setExportModalOpen] = useState(false);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [sharingId, setSharingId] = useState<string | null>(null);
 
   const spent = sumExpenses(expenses).all;
@@ -63,31 +61,42 @@ function PersonasReady() {
     setAmount("");
     setEditing(null);
     setError("");
+    setErrorField(null);
   }
 
-  function onSubmit(event: FormEvent) {
+  function failForm(field: "name" | "amount" | "dueDate", message: string) {
+    setError(message);
+    setErrorField(field);
+    setSubmitStatus("error");
+  }
+
+  function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const cents = parseAmountToCents(amount);
     if (!name.trim()) {
-      setError("Escribe el nombre de la persona.");
+      failForm("name", "Escribe el nombre de la persona.");
       return;
     }
     if (cents === null) {
-      setError("Escribe cuánto le toca pagar, mayor a $0.00.");
+      failForm("amount", "Escribe cuánto le toca pagar, mayor a $0.00.");
       return;
     }
     if (!dueDate) {
-      setError("Elige la fecha en que tiene que pagar.");
+      failForm("dueDate", "Elige la fecha en que tiene que pagar.");
       return;
     }
     const input = { name, amountCents: cents, dueDate };
     const ok = editing ? updatePerson(editing.id, input) : addPerson(input);
     if (!ok) {
-      setError("No se pudo guardar la persona. Revisa los datos.");
+      failForm("name", "No se pudo guardar la persona. Revisa los datos.");
       return;
     }
+    setError("");
+    setErrorField(null);
+    setSubmitStatus("success");
     toast.success(editing ? "Persona actualizada" : "Persona agregada a la lista");
     reset();
+    window.setTimeout(() => setSubmitStatus(undefined), 1800);
   }
 
   function handleSinglePersonExcel(person: PersonDue) {
@@ -117,22 +126,10 @@ function PersonasReady() {
     }
   }
 
-  function handleCopyText(person: PersonDue) {
-    const text = buildMemberWhatsAppText(person, expenses, people.length);
-    void navigator.clipboard?.writeText(text).then(
-      () => {
-        setCopiedId(person.id);
-        toast.success(`Mensaje para ${person.name} copiado`);
-        setTimeout(() => setCopiedId(null), 2500);
-      },
-      () => toast.error("No se pudo copiar el texto"),
-    );
-  }
-
   return (
-    <div className="page-pad px-4 pt-5 pb-24 space-y-4">
+    <div className="page-pad mx-auto grid gap-5 px-4 pb-28 pt-5 xl:grid-cols-2">
       {/* Resumen de Reparto y Pendientes para el Siguiente Mes */}
-      <section className="rounded-3xl border border-line bg-surface p-5 shadow-xs space-y-4">
+      <section className="space-y-4 rounded-[1.75rem] border border-line bg-gradient-to-br from-surface via-surface to-citrus/20 p-5 shadow-sm xl:col-span-2">
         <div className="flex items-start justify-between">
           <div>
             <p className="text-xs uppercase tracking-wider text-muted font-medium">Total de Gastos a Repartir</p>
@@ -215,7 +212,7 @@ function PersonasReady() {
       </section>
 
       {/* Formulario para agregar o editar persona */}
-      <form onSubmit={onSubmit} className="space-y-3 rounded-3xl border border-line bg-surface p-4 shadow-xs">
+      <form id="people-form" noValidate onSubmit={onSubmit} className="space-y-3 rounded-[1.75rem] border border-line bg-surface p-4 shadow-sm xl:col-start-1 xl:row-start-2">
         <div className="flex items-baseline justify-between">
           <div className="flex items-center gap-2">
             <span className="grid size-7 place-items-center rounded-lg bg-forest/10 text-forest">
@@ -236,15 +233,22 @@ function PersonasReady() {
           ) : null}
         </div>
 
-        <Field label="Nombre del integrante" hint={error || undefined}>
+        <Field label="Nombre del integrante">
           <input
+            id="person-name"
             className={inputClass}
             value={name}
             maxLength={60}
             placeholder="Ej: Carlos, Ana, Mamá, Juan Pérez…"
+            aria-invalid={errorField === "name"}
+            aria-describedby={errorField === "name" ? "person-form-error" : undefined}
             onChange={(event) => {
               setName(event.target.value);
-              if (error) setError("");
+              if (errorField === "name") {
+                setError("");
+                setErrorField(null);
+                setSubmitStatus(undefined);
+              }
             }}
             required
           />
@@ -253,13 +257,21 @@ function PersonasReady() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Field label="Cuánto le toca pagar ($ MXN)">
             <input
+              id="person-amount"
               className={inputClass}
               inputMode="decimal"
+              type="text"
               value={amount}
               placeholder="0.00"
+              aria-invalid={errorField === "amount"}
+              aria-describedby={errorField === "amount" ? "person-form-error" : undefined}
               onChange={(event) => {
                 setAmount(event.target.value);
-                if (error) setError("");
+                if (errorField === "amount") {
+                  setError("");
+                  setErrorField(null);
+                  setSubmitStatus(undefined);
+                }
               }}
               required
             />
@@ -267,23 +279,43 @@ function PersonasReady() {
 
           <Field label="Fecha en que tiene que pagar">
             <input
+              id="person-due-date"
               className={inputClass}
               type="date"
               value={dueDate}
-              onChange={(event) => setDueDate(event.target.value)}
+              aria-invalid={errorField === "dueDate"}
+              aria-describedby={errorField === "dueDate" ? "person-form-error" : undefined}
+              onChange={(event) => {
+                setDueDate(event.target.value);
+                if (errorField === "dueDate") {
+                  setError("");
+                  setErrorField(null);
+                  setSubmitStatus(undefined);
+                }
+              }}
               required
             />
           </Field>
         </div>
 
-        <Button type="submit" className="w-full mt-2">
+        {error ? (
+          <p id="person-form-error" role="alert" aria-live="assertive" className="rounded-xl border border-danger/20 bg-danger/10 px-3 py-2 text-sm font-medium text-danger">
+            {error}
+          </p>
+        ) : null}
+        <Button
+          type="submit"
+          className="mt-2 w-full"
+          status={submitStatus}
+          statusMessage={submitStatus === "success" ? "Persona guardada correctamente." : submitStatus === "error" ? "Hay un error que debes corregir." : undefined}
+        >
           {editing ? "Guardar cambios de la persona" : "Agregar persona"}
         </Button>
       </form>
 
       {/* Lista de Personas Registradas */}
       {people.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-line bg-paper/50 p-6 text-center">
+        <div className="rounded-3xl border border-dashed border-line bg-paper/50 p-6 text-center xl:col-start-2 xl:row-start-2">
           <Users className="size-8 text-muted mx-auto mb-2" />
           <p className="font-display text-lg font-medium text-ink">No hay personas registradas</p>
           <p className="mt-1 text-xs text-muted max-w-xs mx-auto">
@@ -291,13 +323,13 @@ function PersonasReady() {
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between px-1">
+        <div className="space-y-3 xl:col-start-2 xl:row-start-2">
+          <div className="flex flex-wrap items-center justify-between gap-2 px-1">
             <h3 className="font-display text-lg font-medium text-ink">Integrantes ({people.length})</h3>
             <div className="flex gap-2">
               <button
                 type="button"
-                className="text-[11px] text-forest hover:underline font-medium"
+                className="min-h-11 rounded-xl px-2 text-[11px] font-semibold text-forest hover:bg-forest/10"
                 onClick={() => {
                   setAllPeopleSettled(true);
                   toast.success("Todos marcados como pagados");
@@ -308,7 +340,7 @@ function PersonasReady() {
               <span className="text-muted">·</span>
               <button
                 type="button"
-                className="text-[11px] text-muted hover:text-ink font-medium"
+                className="min-h-11 rounded-xl px-2 text-[11px] font-semibold text-muted hover:bg-paper hover:text-ink"
                 onClick={() => {
                   setAllPeopleSettled(false);
                   toast.message("Todos marcados como pendientes");
@@ -381,54 +413,55 @@ function PersonasReady() {
                       <span>{person.settled ? "Marcado como pagado" : "¿Ya pagó?"}</span>
                     </label>
 
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        className="inline-flex items-center gap-1 h-8 px-2 rounded-xl border border-line bg-paper text-xs font-medium text-ink hover:bg-forest/10 hover:text-forest transition-colors"
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <Button
+                        variant="surface"
+                        className="min-h-11 px-3 text-xs"
                         onClick={() => handleSinglePersonExcel(person)}
                         title={`Descargar Excel de ${person.name}`}
                       >
-                        <FileSpreadsheet className="size-3.5" />
-                        <span>Excel</span>
-                      </button>
+                        <FileSpreadsheet aria-hidden="true" className="size-4" />
+                        Excel
+                      </Button>
 
-                      <button
-                        type="button"
-                        className="inline-flex items-center gap-1 h-8 px-2.5 rounded-xl bg-forest text-paper text-xs font-medium hover:opacity-90 transition-opacity"
+                      <Button
+                        className="min-h-11 px-3 text-xs"
                         onClick={() => void handleSharePerson(person)}
-                        disabled={sharingId === person.id}
+                        loading={sharingId === person.id}
+                        loadingLabel="Enviando…"
                         title={`Enviar corte a ${person.name}`}
                       >
-                        <Send className="size-3" />
-                        <span>Mandar</span>
-                      </button>
+                        <Send aria-hidden="true" className="size-4" />
+                        Mandar
+                      </Button>
 
                       <button
                         type="button"
                         aria-label={`Editar ${person.name}`}
-                        className="grid size-8 place-items-center rounded-xl text-muted hover:bg-paper hover:text-ink transition-colors"
+                        className="grid size-11 place-items-center rounded-xl text-muted hover:bg-paper hover:text-ink"
                         onClick={() => {
                           setEditing(person);
                           setName(person.name);
                           setAmount((person.amountCents / 100).toFixed(2));
                           setDueDate(person.dueDate);
-                          window.scrollTo({ top: 0, behavior: "smooth" });
+                          const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+                          document.getElementById("people-form")?.scrollIntoView({ block: "start", behavior: reducedMotion ? "auto" : "smooth" });
                         }}
                       >
-                        <Pencil className="size-3.5" />
+                        <Pencil aria-hidden="true" className="size-4" />
                       </button>
 
                       <button
                         type="button"
                         aria-label={`Quitar ${person.name}`}
-                        className="grid size-8 place-items-center rounded-xl text-muted hover:bg-danger/10 hover:text-danger transition-colors"
+                        className="grid size-11 place-items-center rounded-xl text-muted hover:bg-danger/10 hover:text-danger"
                         onClick={() => {
                           removePerson(person.id);
                           if (editing?.id === person.id) reset();
                           toast.success("Persona quitada");
                         }}
                       >
-                        <Trash2 className="size-3.5" />
+                        <Trash2 aria-hidden="true" className="size-4" />
                       </button>
                     </div>
                   </div>

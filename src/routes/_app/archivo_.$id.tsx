@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Download, FileSpreadsheet, Send, Trash2, Users, Calendar, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, FileSpreadsheet, Send, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { LoadingList } from "@/components/shell";
 import { Button, Money } from "@/components/ui";
@@ -31,7 +31,7 @@ function DetalleReady({ id }: { id: string }) {
 
   if (!item) {
     return (
-      <div className="page-pad px-4 pt-8 space-y-3">
+      <div className="page-pad mx-auto max-w-6xl space-y-3 px-4 pt-8">
         <h2 className="font-display text-2xl font-medium text-ink">Este cierre no se encuentra</h2>
         <p className="text-xs text-muted">Es posible que haya sido eliminado de este dispositivo.</p>
         <Link to="/archivo" className="inline-flex h-10 items-center text-xs font-semibold text-forest">
@@ -75,7 +75,7 @@ function DetalleReady({ id }: { id: string }) {
   }
 
   return (
-    <div className="page-pad px-4 pt-4 pb-24 space-y-4">
+    <div className="page-pad mx-auto max-w-6xl space-y-5 px-4 pb-28 pt-4">
       <Link
         to="/archivo"
         className="inline-flex items-center gap-1.5 text-xs font-medium text-forest hover:underline"

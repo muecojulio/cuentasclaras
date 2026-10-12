@@ -24,7 +24,8 @@ function subtitleFor(path: string): string {
 
 function CurrencyBadge() {
   return (
-    <div className="inline-flex h-9 items-center rounded-full border border-line bg-surface px-3 text-xs font-semibold tracking-wide text-forest shadow-xs">
+    <div className="inline-flex h-10 items-center gap-1.5 rounded-full border border-citrus bg-citrus/45 px-3 text-xs font-bold tracking-wide text-ink shadow-xs">
+      <span aria-hidden="true" className="size-2 rounded-full bg-forest" />
       $ MXN
     </div>
   );
@@ -49,13 +50,14 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-dvh bg-paper text-ink pb-20">
       <header className="sticky top-0 z-30 border-b border-line/80 bg-paper/90 backdrop-blur-md">
-        <div className="mx-auto flex max-w-lg items-center justify-between gap-3 px-4 py-3">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <span className="grid size-8 place-items-center rounded-xl bg-forest text-paper shadow-xs" aria-hidden="true">
-                <span className="size-2.5 rounded-full bg-paper" />
+              <span className="relative grid size-9 place-items-center rounded-2xl bg-forest text-paper shadow-sm" aria-hidden="true">
+                <ReceiptText className="size-5" />
+                <span className="absolute -right-1 -top-1 size-3 rounded-full border-2 border-paper bg-coral" />
               </span>
-              <p className="truncate font-display text-xl font-medium tracking-tight">Cuentas Claras</p>
+              <p className="truncate font-display text-xl font-semibold tracking-tight">Cuentas Claras</p>
             </div>
             <p className="mt-0.5 pl-10 text-xs text-muted">{subtitleFor(path)}</p>
           </div>
@@ -63,10 +65,10 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-lg">{children}</main>
+      <main className="mx-auto w-full max-w-6xl">{children}</main>
 
-      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/95 backdrop-blur-md safe-bottom shadow-lg">
-        <ul className="mx-auto grid max-w-lg grid-cols-5">
+      <nav aria-label="Navegación principal" className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/95 backdrop-blur-md safe-bottom shadow-lg">
+        <ul className="mx-auto grid max-w-6xl grid-cols-5">
           {NAV.map((item) => {
             const Icon = item.icon;
             const active = item.exact ? path === item.to : path === item.to || path.startsWith(`${item.to}/`);
@@ -76,12 +78,13 @@ export function AppShell({ children }: { children: ReactNode }) {
                   to={item.to}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "flex h-16 flex-col items-center justify-center gap-1 text-[11px] leading-tight px-1",
-                    "motion-safe:transition-colors motion-safe:duration-150",
+                    "flex h-16 min-w-11 flex-col items-center justify-center gap-1 px-1 text-[11px] leading-tight",
                     active ? "font-semibold text-forest" : "text-muted hover:text-ink",
                   )}
                 >
-                  <Icon className={cn("size-5 transition-transform", active ? "scale-110" : "scale-100")} strokeWidth={active ? 2.25 : 1.75} aria-hidden="true" />
+                  <span className={cn("grid size-8 place-items-center rounded-xl", active ? "bg-forest/10" : "bg-transparent")}>
+                    <Icon className={cn("size-5 transition-transform", active ? "scale-110" : "scale-100")} strokeWidth={active ? 2.25 : 1.75} aria-hidden="true" />
+                  </span>
                   <span className="truncate">{item.label}</span>
                 </Link>
               </li>

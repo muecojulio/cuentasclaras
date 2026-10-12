@@ -1,7 +1,6 @@
 import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
-import { useLedger, freshOpen } from "./ledger-store.ts";
-import { parseAmountToCents, formatMxn } from "./money.ts";
+import { migrateLedgerState, useLedger, freshOpen } from "./ledger-store.ts";
 
 describe("Ledger Store & Expense Lifecycle", () => {
   beforeEach(() => {
@@ -33,6 +32,34 @@ describe("Ledger Store & Expense Lifecycle", () => {
     assert.strictEqual(expenses.length, 2);
     assert.strictEqual(expenses[0]?.description, "Taxis y estacionamiento");
     assert.strictEqual(expenses[1]?.description, "Despensa Walmart");
+    assert.strictEqual(expenses[0]?.category, "otros");
+  });
+
+  it("migrates older local expenses without losing data", () => {
+    const migrated = migrateLedgerState(
+      {
+        open: {
+          id: "open-1",
+          openedAt: "2026-10-01T00:00:00.000Z",
+          expenses: [{ id: "expense-1", description: "Comida", method: "efectivo" }],
+          people: [],
+        },
+        archive: [
+          {
+            id: "archive-1",
+            expenses: [{ id: "expense-2", description: "Taxi", method: "tarjeta" }],
+          },
+        ],
+      },
+      1,
+    ) as {
+      open: { expenses: Array<{ id: string; category: string }> };
+      archive: Array<{ expenses: Array<{ id: string; category: string }> }>;
+    };
+
+    assert.equal(migrated.open.expenses[0]?.id, "expense-1");
+    assert.equal(migrated.open.expenses[0]?.category, "otros");
+    assert.equal(migrated.archive[0]?.expenses[0]?.category, "otros");
   });
 
   it("allows adding more than one person and assigning amounts and due dates", () => {

@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import * as XLSX from "xlsx";
+import * as XLSX from "@e965/xlsx";
 import {
   buildMonthlyExcelWorkbook,
   buildSingleMemberExcelWorkbook,
@@ -16,6 +16,7 @@ describe("Excel Export & Multi-Person Management", () => {
       date: "2026-10-01",
       description: "Supermercado mensual",
       method: "tarjeta",
+      category: "comida",
       amountCents: 150000, // $1,500.00 MXN
       createdAt: "2026-10-01T10:00:00.000Z",
     },
@@ -24,6 +25,7 @@ describe("Excel Export & Multi-Person Management", () => {
       date: "2026-10-02",
       description: "Gasolina y casetas",
       method: "efectivo",
+      category: "transporte",
       amountCents: 85000, // $850.00 MXN
       createdAt: "2026-10-02T12:00:00.000Z",
     },
@@ -80,6 +82,10 @@ describe("Excel Export & Multi-Person Management", () => {
     assert.ok(text.includes("CUENTAS CLARAS"));
     assert.ok(text.includes("Pesos Mexicanos (MXN)"));
     assert.ok(text.includes("TOTAL PENDIENTE PARA SIGUIENTE MES"));
+
+    const detailText = JSON.stringify(wb.Sheets["Detalle de Gastos"]);
+    assert.ok(detailText.includes("Categoría"));
+    assert.ok(detailText.includes("Comida"));
   });
 
   it("generates single-member Excel with their specific pending balance", () => {
