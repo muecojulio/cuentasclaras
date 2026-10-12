@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { CloseDialog } from "@/components/close-dialog";
-import { CurrencyConverter } from "@/components/currency-converter";
 import { ExportModal } from "@/components/export-modal";
 import { ScrollRail } from "@/components/scroll-rail";
 import { SearchableSelect } from "@/components/searchable-select";
@@ -287,14 +286,6 @@ function GastosReady() {
 
       <div className="grid gap-5 xl:grid-cols-[minmax(19rem,0.85fr)_minmax(0,1.15fr)] xl:items-start">
         <div className="space-y-4">
-          <CurrencyConverter
-            onUseAmount={(convertedAmount) => {
-              setAmount(convertedAmount);
-              clearError();
-              document.getElementById("expense-amount")?.focus();
-            }}
-          />
-
           <form
             id="expense-form"
             onSubmit={onSubmit}

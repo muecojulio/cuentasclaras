@@ -1,13 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
   AlertTriangle,
+  Banknote,
   Database,
-  ExternalLink,
   FileSpreadsheet,
-  Globe2,
   HardDrive,
   LockKeyhole,
-  MessageCircle,
   ShieldCheck,
   Trash2,
 } from "lucide-react";
@@ -28,12 +26,12 @@ const cards = [
     ),
   },
   {
-    title: "2. Conversor y servicio externo",
-    icon: Globe2,
+    title: "2. Moneda oficial y sin servicios externos",
+    icon: Banknote,
     tone: "bg-sky/50 text-ink",
     body: (
       <>
-        Si abres o actualizas el conversor, se consultan cotizaciones públicas USD→MXN y EUR→MXN en <code className="rounded bg-paper px-1 py-0.5 font-mono text-[11px] text-ink">api.frankfurter.dev</code>. La petición contiene solo los códigos de moneda: <strong className="text-ink">no incluye tus compras, nombres, importes registrados ni saldos</strong>. El servicio y la infraestructura de red pueden recibir datos técnicos habituales, como la dirección IP, el agente del navegador y la hora de la consulta. Las cotizaciones se guardan en el navegador durante seis horas para reducir llamadas.
+        Todos los registros y operaciones se gestionan exclusivamente en <strong className="text-ink">pesos mexicanos ($ MXN)</strong>. La aplicación no consulta APIs de divisas ni servicios externos para el registro de gastos: opera de manera 100% local en tu navegador.
       </>
     ),
   },
@@ -72,7 +70,7 @@ function PrivacidadPage() {
             <p className="text-xs font-semibold uppercase tracking-[0.17em] text-paper/70">Tus datos, tus decisiones</p>
             <h1 className="mt-1 font-display text-3xl font-semibold tracking-tight">Privacidad y datos</h1>
             <p className="mt-2 max-w-2xl text-sm leading-relaxed text-paper/85">
-              Esta política explica qué se guarda, cuándo se consulta una API externa y qué ocurre cuando exportas o compartes un corte.
+              Esta política explica qué se guarda y qué ocurre cuando exportas o compartes un corte.
             </p>
           </div>
         </div>
@@ -121,7 +119,7 @@ function PrivacidadPage() {
             <strong className="text-ink">Control:</strong> puedes corregir o quitar gastos, borrar cierres del Archivo y exportar copias desde las funciones de la aplicación.
           </li>
           <li className="rounded-2xl bg-paper/80 p-3">
-            <strong className="text-ink">Borrado del dispositivo:</strong> al limpiar los datos del sitio en la configuración del navegador se eliminan tanto el libro local como la caché de cotizaciones. Esta acción no se puede deshacer.
+            <strong className="text-ink">Borrado del dispositivo:</strong> al limpiar los datos del sitio en la configuración del navegador se elimina el libro local. Esta acción no se puede deshacer.
           </li>
           <li className="rounded-2xl bg-paper/80 p-3">
             <strong className="text-ink">Sin recuperación:</strong> si cambias de navegador o dispositivo, borras el almacenamiento o el navegador lo limpia, Cuentas Claras no puede restaurar tus registros.
@@ -132,41 +130,21 @@ function PrivacidadPage() {
         </ul>
       </section>
 
-      <section className="rounded-3xl border border-line bg-gradient-to-r from-sky/25 via-surface to-citrus/20 p-4 shadow-xs sm:p-5">
+      <section className="rounded-3xl border border-line bg-gradient-to-r from-forest/10 via-surface to-citrus/20 p-4 shadow-xs sm:p-5">
         <div className="flex items-center gap-3">
           <span className="grid size-10 place-items-center rounded-2xl bg-surface text-forest shadow-xs">
             <LockKeyhole aria-hidden="true" className="size-5" />
           </span>
-          <h2 className="font-display text-xl font-semibold tracking-tight text-ink">Cotizaciones informativas</h2>
+          <h2 className="font-display text-xl font-semibold tracking-tight text-ink">Operación 100% local en pesos mexicanos</h2>
         </div>
         <p className="mt-3 text-sm leading-relaxed text-muted">
-          Frankfurter distribuye cotizaciones históricas y de referencia basadas en fuentes oficiales; no es un servicio bancario ni ofrece un tipo de cambio garantizado para una operación. Los importes convertidos son orientativos y se guardan en el libro solo cuando tú confirmas el gasto.
+          Cuentas Claras está diseñada exclusivamente para operar en pesos mexicanos ($ MXN). Todos los cálculos se realizan directamente en tu navegador sin enviar importes ni requerir consultas a servicios externos de cotización o conversión de divisas.
         </p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <a
-            href="https://www.frankfurter.dev/"
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-line bg-surface px-4 text-sm font-semibold text-forest"
-          >
-            <Globe2 aria-hidden="true" className="size-4" />
-            Frankfurter <ExternalLink aria-hidden="true" className="size-3.5" />
-          </a>
-          <a
-            href="https://github.com/lineofflight/frankfurter"
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-line bg-surface px-4 text-sm font-semibold text-ink"
-          >
-            <MessageCircle aria-hidden="true" className="size-4" />
-            Código abierto <ExternalLink aria-hidden="true" className="size-3.5" />
-          </a>
-        </div>
       </section>
 
       <footer className="rounded-2xl border border-line bg-paper/70 p-4 text-center text-xs leading-relaxed text-muted">
         <p className="font-semibold text-ink">Cuentas Claras · Política de privacidad</p>
-        <p className="mt-1">Vigente desde el 12 de octubre de 2026. Si cambian el almacenamiento o los servicios externos, esta política se actualizará aquí.</p>
+        <p className="mt-1">Vigente desde el 12 de octubre de 2026. Si cambia el almacenamiento, esta política se actualizará aquí.</p>
       </footer>
     </div>
   );
