@@ -1,0 +1,82 @@
+@import "tailwindcss";
+@import "@fontsource-variable/fraunces/wght.css";
+@import "@fontsource-variable/outfit/wght.css";
+@import "sonner/dist/styles.css";
+
+@theme {
+  --color-ink: #1c1915;
+  --color-paper: #f3efe6;
+  --color-surface: #fffdf8;
+  --color-line: #e4ddd0;
+  --color-muted: #6f685e;
+  --color-forest: #0f6e56;
+  --color-danger: #8f3d32;
+  --font-sans: "Outfit Variable", "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Fraunces Variable", "Fraunces", Georgia, serif;
+}
+
+@utility page-pad {
+  padding-bottom: calc(8.5rem + env(safe-area-inset-bottom));
+}
+
+@utility page-pad-dock {
+  padding-bottom: calc(11.5rem + env(safe-area-inset-bottom));
+}
+
+@utility dock-above-nav {
+  position: fixed;
+  right: 0;
+  left: 0;
+  z-index: 20;
+  bottom: calc(4.25rem + env(safe-area-inset-bottom));
+}
+
+@utility safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.rise {
+  animation: rise 320ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise {
+    animation: none;
+  }
+}
+
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  html {
+    color-scheme: light;
+  }
+
+  body {
+    margin: 0;
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  input,
+  button {
+    font: inherit;
+  }
+}
