@@ -11,9 +11,10 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
-import { Route as AppAjustesRouteImport } from './routes/_app/ajustes'
 import { Route as AppArchivoRouteImport } from './routes/_app/archivo'
+import { Route as AppInstalarRouteImport } from './routes/_app/instalar'
 import { Route as AppPersonasRouteImport } from './routes/_app/personas'
+import { Route as AppPrivacidadRouteImport } from './routes/_app/privacidad'
 import { Route as AppArchivoIdRouteImport } from './routes/_app/archivo_.$id'
 
 const AppRoute = AppRouteImport.update({
@@ -25,19 +26,24 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppRoute,
 } as any)
-const AppAjustesRoute = AppAjustesRouteImport.update({
-  id: '/ajustes',
-  path: '/ajustes',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppArchivoRoute = AppArchivoRouteImport.update({
   id: '/archivo',
   path: '/archivo',
   getParentRoute: () => AppRoute,
 } as any)
+const AppInstalarRoute = AppInstalarRouteImport.update({
+  id: '/instalar',
+  path: '/instalar',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppPersonasRoute = AppPersonasRouteImport.update({
   id: '/personas',
   path: '/personas',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPrivacidadRoute = AppPrivacidadRouteImport.update({
+  id: '/privacidad',
+  path: '/privacidad',
   getParentRoute: () => AppRoute,
 } as any)
 const AppArchivoIdRoute = AppArchivoIdRouteImport.update({
@@ -48,38 +54,54 @@ const AppArchivoIdRoute = AppArchivoIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
-  '/ajustes': typeof AppAjustesRoute
   '/archivo': typeof AppArchivoRoute
+  '/instalar': typeof AppInstalarRoute
   '/personas': typeof AppPersonasRoute
+  '/privacidad': typeof AppPrivacidadRoute
   '/archivo/$id': typeof AppArchivoIdRoute
 }
 export interface FileRoutesByTo {
-  '/ajustes': typeof AppAjustesRoute
   '/archivo': typeof AppArchivoRoute
+  '/instalar': typeof AppInstalarRoute
   '/personas': typeof AppPersonasRoute
+  '/privacidad': typeof AppPrivacidadRoute
   '/': typeof AppIndexRoute
   '/archivo/$id': typeof AppArchivoIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
-  '/_app/ajustes': typeof AppAjustesRoute
   '/_app/archivo': typeof AppArchivoRoute
+  '/_app/instalar': typeof AppInstalarRoute
   '/_app/personas': typeof AppPersonasRoute
+  '/_app/privacidad': typeof AppPrivacidadRoute
   '/_app/': typeof AppIndexRoute
   '/_app/archivo_/$id': typeof AppArchivoIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/ajustes' | '/archivo' | '/personas' | '/archivo/$id'
+  fullPaths:
+    | '/'
+    | '/archivo'
+    | '/instalar'
+    | '/personas'
+    | '/privacidad'
+    | '/archivo/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/ajustes' | '/archivo' | '/personas' | '/' | '/archivo/$id'
+  to:
+    | '/archivo'
+    | '/instalar'
+    | '/personas'
+    | '/privacidad'
+    | '/'
+    | '/archivo/$id'
   id:
     | '__root__'
     | '/_app'
-    | '/_app/ajustes'
     | '/_app/archivo'
+    | '/_app/instalar'
     | '/_app/personas'
+    | '/_app/privacidad'
     | '/_app/'
     | '/_app/archivo_/$id'
   fileRoutesById: FileRoutesById
@@ -104,13 +126,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/ajustes': {
-      id: '/_app/ajustes'
-      path: '/ajustes'
-      fullPath: '/ajustes'
-      preLoaderRoute: typeof AppAjustesRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/_app/archivo': {
       id: '/_app/archivo'
       path: '/archivo'
@@ -118,11 +133,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppArchivoRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/instalar': {
+      id: '/_app/instalar'
+      path: '/instalar'
+      fullPath: '/instalar'
+      preLoaderRoute: typeof AppInstalarRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/personas': {
       id: '/_app/personas'
       path: '/personas'
       fullPath: '/personas'
       preLoaderRoute: typeof AppPersonasRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/privacidad': {
+      id: '/_app/privacidad'
+      path: '/privacidad'
+      fullPath: '/privacidad'
+      preLoaderRoute: typeof AppPrivacidadRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/archivo_/$id': {
@@ -136,17 +165,19 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppRouteChildren {
-  AppAjustesRoute: typeof AppAjustesRoute
   AppArchivoRoute: typeof AppArchivoRoute
+  AppInstalarRoute: typeof AppInstalarRoute
   AppPersonasRoute: typeof AppPersonasRoute
+  AppPrivacidadRoute: typeof AppPrivacidadRoute
   AppIndexRoute: typeof AppIndexRoute
   AppArchivoIdRoute: typeof AppArchivoIdRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
-  AppAjustesRoute: AppAjustesRoute,
   AppArchivoRoute: AppArchivoRoute,
+  AppInstalarRoute: AppInstalarRoute,
   AppPersonasRoute: AppPersonasRoute,
+  AppPrivacidadRoute: AppPrivacidadRoute,
   AppIndexRoute: AppIndexRoute,
   AppArchivoIdRoute: AppArchivoIdRoute,
 }

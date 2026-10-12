@@ -1,62 +1,38 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Archive, ReceiptText, Settings2, Users } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { Archive, QrCode, ReceiptText, ShieldCheck, Users } from "lucide-react";
+import { useEffect, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
-import { loadFx, type FxQuote } from "@/lib/fx";
 import { freshOpen, useLedger } from "@/lib/ledger-store";
 
 const NAV = [
   { to: "/", label: "Gastos", icon: ReceiptText, exact: true },
   { to: "/personas", label: "Personas", icon: Users, exact: false },
   { to: "/archivo", label: "Archivo", icon: Archive, exact: false },
-  { to: "/ajustes", label: "Más", icon: Settings2, exact: false },
+  { to: "/instalar", label: "Instalar", icon: QrCode, exact: false },
+  { to: "/privacidad", label: "Privacidad", icon: ShieldCheck, exact: false },
 ] as const;
 
 function subtitleFor(path: string): string {
-  if (path === "/") return "Lista abierta";
-  if (path.startsWith("/personas")) return "Quién paga y cuándo";
+  if (path === "/") return "Gastos en pesos mexicanos";
+  if (path.startsWith("/personas")) return "Quién paga y cuándo · Reparto";
   if (path.startsWith("/archivo/")) return "Cierre guardado";
-  if (path.startsWith("/archivo")) return "Listas cerradas";
-  if (path.startsWith("/ajustes")) return "Privacidad e instalación";
+  if (path.startsWith("/archivo")) return "Listas y cierres guardados";
+  if (path.startsWith("/instalar")) return "Código QR e instalación";
+  if (path.startsWith("/privacidad")) return "Políticas de privacidad y datos locales";
   return "Cuentas Claras";
 }
 
-function FxChip() {
-  const [quote, setQuote] = useState<FxQuote | null>(null);
-  const [failed, setFailed] = useState(false);
-
-  useEffect(() => {
-    let alive = true;
-    void loadFx()
-      .then((next) => {
-        if (alive) setQuote(next);
-      })
-      .catch(() => {
-        if (alive) setFailed(true);
-      });
-    return () => {
-      alive = false;
-    };
-  }, []);
-
-  const label = quote
-    ? `USD ${quote.usdMxn.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-    : failed
-      ? "Sin cambio"
-      : "USD …";
-
+function CurrencyBadge() {
   return (
-    <Link
-      to="/ajustes"
-      className="inline-flex h-11 items-center rounded-full border border-line bg-surface px-3 text-sm font-medium text-ink motion-safe:transition-transform motion-safe:duration-150 motion-safe:active:scale-[0.96]"
-    >
-      {label}
-    </Link>
+    <div className="inline-flex h-9 items-center rounded-full border border-line bg-surface px-3 text-xs font-semibold tracking-wide text-forest shadow-xs">
+      $ MXN
+    </div>
   );
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
   const path = useRouterState({ select: (state) => state.location.pathname });
+
   useEffect(() => {
     const finish = () => {
       if (!useLedger.getState().open.openedAt) useLedger.setState({ open: freshOpen() });
@@ -71,24 +47,26 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <div className="min-h-dvh bg-paper text-ink">
+    <div className="min-h-dvh bg-paper text-ink pb-20">
       <header className="sticky top-0 z-30 border-b border-line/80 bg-paper/90 backdrop-blur-md">
         <div className="mx-auto flex max-w-lg items-center justify-between gap-3 px-4 py-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <span className="grid size-8 place-items-center rounded-lg bg-forest" aria-hidden="true">
-                <span className="size-2 rounded-full bg-paper" />
+              <span className="grid size-8 place-items-center rounded-xl bg-forest text-paper shadow-xs" aria-hidden="true">
+                <span className="size-2.5 rounded-full bg-paper" />
               </span>
               <p className="truncate font-display text-xl font-medium tracking-tight">Cuentas Claras</p>
             </div>
             <p className="mt-0.5 pl-10 text-xs text-muted">{subtitleFor(path)}</p>
           </div>
-          <FxChip />
+          <CurrencyBadge />
         </div>
       </header>
+
       <main className="mx-auto w-full max-w-lg">{children}</main>
-      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/95 backdrop-blur-md safe-bottom">
-        <ul className="mx-auto grid max-w-lg grid-cols-4">
+
+      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/95 backdrop-blur-md safe-bottom shadow-lg">
+        <ul className="mx-auto grid max-w-lg grid-cols-5">
           {NAV.map((item) => {
             const Icon = item.icon;
             const active = item.exact ? path === item.to : path === item.to || path.startsWith(`${item.to}/`);
@@ -98,13 +76,13 @@ export function AppShell({ children }: { children: ReactNode }) {
                   to={item.to}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "flex h-16 flex-col items-center justify-center gap-1 text-xs",
+                    "flex h-16 flex-col items-center justify-center gap-1 text-[11px] leading-tight px-1",
                     "motion-safe:transition-colors motion-safe:duration-150",
-                    active ? "font-medium text-forest" : "text-muted",
+                    active ? "font-semibold text-forest" : "text-muted hover:text-ink",
                   )}
                 >
-                  <Icon className="size-5" strokeWidth={1.75} aria-hidden="true" />
-                  {item.label}
+                  <Icon className={cn("size-5 transition-transform", active ? "scale-110" : "scale-100")} strokeWidth={active ? 2.25 : 1.75} aria-hidden="true" />
+                  <span className="truncate">{item.label}</span>
                 </Link>
               </li>
             );
@@ -119,7 +97,7 @@ export function LoadingList() {
   return (
     <div className="page-pad px-4 pt-6">
       <p className="font-display text-3xl font-medium tracking-tight">Preparando tu lista</p>
-      <p className="mt-2 text-sm text-muted">Los gastos de este teléfono aparecen en un momento.</p>
+      <p className="mt-2 text-sm text-muted">Los gastos de este dispositivo aparecen en un momento.</p>
     </div>
   );
 }

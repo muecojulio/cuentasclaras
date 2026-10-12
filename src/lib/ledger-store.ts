@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { useEffect, useState } from "react";
-import { cleanText, MAX_CENTS } from "@/lib/money";
+import { cleanText, MAX_CENTS } from "./money.ts";
 
 export type PayMethod = "efectivo" | "tarjeta";
 
@@ -59,9 +59,11 @@ type LedgerState = {
   addPerson: (input: PersonInput) => boolean;
   updatePerson: (id: string, input: PersonInput) => boolean;
   setPersonSettled: (id: string, settled: boolean) => void;
+  setAllPeopleSettled: (settled: boolean) => void;
   removePerson: (id: string) => void;
   splitEvenly: () => boolean;
-  closeDays: (dates: string[]) => "full" | "partial" | null;
+  closeDays: (dates: string[], carryOverUnsettled?: boolean) => "full" | "partial" | null;
+  startNewList: (carryOverUnsettled?: boolean) => void;
   removeArchive: (id: string) => void;
 };
 
@@ -82,12 +84,16 @@ function uid(): string {
   return crypto.randomUUID();
 }
 
-export function freshOpen(): OpenLedger {
+export function freshOpen(initialPeople: PersonDue[] = []): OpenLedger {
   return {
     id: uid(),
     openedAt: new Date().toISOString(),
     expenses: [],
-    people: [],
+    people: initialPeople.map((p) => ({
+      ...p,
+      id: uid(),
+      settled: false,
+    })),
   };
 }
 
@@ -185,6 +191,15 @@ export const useLedger = create<LedgerState>()(
           },
         });
       },
+      setAllPeopleSettled: (settled) => {
+        const open = get().open;
+        set({
+          open: {
+            ...open,
+            people: open.people.map((item) => ({ ...item, settled })),
+          },
+        });
+      },
       removePerson: (id) => {
         const open = get().open;
         set({ open: { ...open, people: open.people.filter((item) => item.id !== id) } });
@@ -209,26 +224,69 @@ export const useLedger = create<LedgerState>()(
         });
         return true;
       },
-      closeDays: (dates) => {
+      closeDays: (dates, carryOverUnsettled = true) => {
         const open = get().open;
         const chosen = new Set(dates);
         const moving = open.expenses.filter((item) => chosen.has(item.date));
         const staying = open.expenses.filter((item) => !chosen.has(item.date));
         if (moving.length === 0) return null;
         const full = staying.length === 0;
+
+        // Archive gets the snapshot of these expenses and people
         const closed: ClosedLedger = {
           id: uid(),
           openedAt: open.openedAt || new Date().toISOString(),
           closedAt: new Date().toISOString(),
           expenses: moving,
-          people: full ? open.people : [],
+          people: [...open.people],
         };
         const archive = [closed, ...get().archive].slice(0, 100);
-        set({
-          archive,
-          open: full ? freshOpen() : { ...open, expenses: staying },
-        });
-        return full ? "full" : "partial";
+
+        if (full) {
+          // Carry over unsettled people if requested
+          const pendingPeople = carryOverUnsettled
+            ? open.people.filter((p) => !p.settled)
+            : [];
+          set({
+            archive,
+            open: freshOpen(pendingPeople),
+          });
+          return "full";
+        } else {
+          set({
+            archive,
+            open: { ...open, expenses: staying },
+          });
+          return "partial";
+        }
+      },
+      startNewList: (carryOverUnsettled = false) => {
+        const open = get().open;
+        // If current list has expenses, archive it first so no data is lost
+        if (open.expenses.length > 0) {
+          const closed: ClosedLedger = {
+            id: uid(),
+            openedAt: open.openedAt || new Date().toISOString(),
+            closedAt: new Date().toISOString(),
+            expenses: open.expenses,
+            people: [...open.people],
+          };
+          const archive = [closed, ...get().archive].slice(0, 100);
+          const pendingPeople = carryOverUnsettled
+            ? open.people.filter((p) => !p.settled)
+            : [];
+          set({
+            archive,
+            open: freshOpen(pendingPeople),
+          });
+        } else {
+          const pendingPeople = carryOverUnsettled
+            ? open.people.filter((p) => !p.settled)
+            : [];
+          set({
+            open: freshOpen(pendingPeople),
+          });
+        }
       },
       removeArchive: (id) => {
         set({ archive: get().archive.filter((item) => item.id !== id) });
